@@ -4,7 +4,7 @@ module.exports = function(app) {
     // Create a new event
     app.post('/api/events', events.create);
  
-    // Retrieve all event
+    // Retrieve all events
     app.get('/api/events', events.find);
  
     // Update a event with Email
@@ -17,5 +17,5 @@ module.exports = function(app) {
     app.get('/api/events/user_city', events.find_in_user_city);
 
     // Attend event
-    app.get('/api/events/attend', events.attend);
+    app.get('/api/events/set_attendance', events.set_attendance);
 }

@@ -1,12 +1,12 @@
 const db = require('../config/db.config.js');
 const Event = db.events;
 const User = db.users;
-
+const sequelize = db.sequelize;
 // Post a Event
 exports.create = (req, res) => {	
 	// Save to MySQL database
 	var EventData = EventFromReq(req);
-	console.log('EventData');
+	console.log('EventData:');
 	console.log(EventData);
 	Event.create(EventData).then(Event => {		
 		// Send created Event to client
@@ -105,41 +105,76 @@ exports.find_in_user_city = (req, res) => {
 	});
 }
 
-exports.attend = (req, res) => {
+exports.set_attendance = (req, res) => {
 	const email = req.query.email;
 	const event_id = req.query.event_id;
+	const is_attending = req.query.is_attending;
 
-	res.send("Not implemented yet");
-	// User.findOne(
-	// 	{ where: { email: email} }
-	// ).then(user => {
-	// 	Event.findOne(
-	// 		{ where: { } }
-	// 	).then();
+	switch(is_attending) {
+		case "true": attend(email, event_id, res); break;
+		case "false": unattend(email, event_id, res); break;
+		default: res.status(400).send("Invalid parameter value 'is_attending = '" + is_attending);
+	}
+}
 
+var attend = function(email, event_id, res) {
+	// Update the events table with user's email
+	Event.update(
+		{ participants_emails: sequelize.fn('array_append', sequelize.col('participants_emails'), email)},
+		{ where: {id: event_id} }
+	).then(() => {
+		console.log("Added user with email = " + email + " successfully to the event with id = " + event_id);
+	}).catch(function (err) {
+		console.log(err);
+		res.status(400);
+		res.send(err.name);
+	});
 
-	// 	console.log("Found user in city: " + user.city);
-	// 	Event.findAll(
-	// 		{ where: { city: user.city} }
-	// 	).then(events => {
-	// 		if (events == null || events == []) {
-	// 			res.status(204);
-	// 		}
-	// 		res.send(events);	
-	// 	}).catch(function (err) {
-	// 		console.log(err);
-	// 		res.status(400);
-	// 		res.send("error while fetching events in user's city");
-	// 	});
-	// }).catch(function (err) {
-	// 	console.log(err);
-	// 	res.status(400);
-	// 	res.send("user not found for this email!");
-	// });	
+	// Update the users table with the new event
+	User.update(
+		{ events_attending: sequelize.fn('array_append', sequelize.col('events_attending'), event_id)},
+		{ where: {email: email} }
+	).then(() => {
+		console.log("Added event with id = " + event_id + " successfully to the user with email = " + email);
+		res.status(200).send("User with email = " + email + " is now attending the event with id = " + event_id);
+	}).catch(function (err) {
+		console.log(err);
+		res.status(400);
+		res.send(err.name);
+	});
+}
+
+var unattend = function(email, event_id, res) {
+	// Update the events table to remove user's email
+	Event.update(
+		{ participants_emails: sequelize.fn('array_remove', sequelize.col('participants_emails'), email)},
+		{ where: {id: event_id} }
+	).then(() => {
+		console.log("Removed user with email = " + email + " successfully from the event with id = " + event_id);
+	}).catch(function (err) {
+		console.log(err);
+		res.status(400);
+		res.send(err.name);
+	});
+
+	// Update the users table to remove the event
+	User.update(
+		{ events_attending: sequelize.fn('array_remove', sequelize.col('events_attending'), event_id)},
+		{ where: {email: email} }
+	).then(() => {
+		console.log("Event with id = " + event_id + " was successfully removed from the user with email = " + email);
+		res.status(200).send("User with email = " + email + " has been removed from the event with id = " + event_id);
+	}).catch(function (err) {
+		console.log(err);
+		res.status(400);
+		res.send(err.name);
+	});
 }
 
 // Util functions
 var EventFromReq = (req) => {
+	console.log("req body:")
+	console.log(req.body)
 	var Event = {
 		event_name: req.body.event_name,
 		description: req.body.description, 
@@ -149,7 +184,6 @@ var EventFromReq = (req) => {
 		location: req.body.location, 
 		duration_in_minutes: req.body.duration_in_minutes, 
 		max_guests: req.body.max_guests, 
-		min_guests: req.body.min_guests, 
 		min_guests: req.body.min_guests, 
 		rating: req.body.rating,
 		owner_email: req.body.owner_email,
@@ -161,6 +195,6 @@ var EventFromReq = (req) => {
 			delete Event[key];
 		}
 	}
-
+	console.log(Event);
 	return Event;
 }
