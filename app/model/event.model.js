@@ -1,5 +1,5 @@
 module.exports = (sequelize, Sequelize) => {
-    var Event = sequelize.define('test_event_marlon', { 
+    var Event = sequelize.define('event', { 
         event_name: Sequelize.STRING,
         description: Sequelize.STRING(1000), 
         date: Sequelize.DATE, 
