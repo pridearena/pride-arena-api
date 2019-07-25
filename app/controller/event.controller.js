@@ -2,6 +2,8 @@ const db = require('../config/db.config.js');
 const Event = db.events;
 const User = db.users;
 const sequelize = db.sequelize;
+var Op = db.Sequelize.Op
+
 // Post a Event
 exports.create = (req, res) => {	
 	// Save to MySQL database
@@ -21,9 +23,25 @@ exports.create = (req, res) => {
 // FETCH all events
 exports.find = (req, res) => {
 	var id = req.query.id;
+	var email = req.query.email;
+	var since_now = req.query.since_now;
 	
 	if (id == undefined) {
-		Event.findAll().then(events => {
+		var where_condition = {}
+
+		if (since_now == 1) {
+			where_condition.createdAt = {
+				[Op.gte]: dateNow()
+			}
+		}
+
+		if (email != undefined) {
+			where_condition.participants_emails = {
+				[Op.contains]: [email]
+			}
+		}
+
+		Event.findAll({ where: where_condition }).then(events => {
 			// Send all events to Client
 			res.send(events);
 		  }).catch(function (err) {
@@ -197,4 +215,12 @@ var EventFromReq = (req) => {
 	}
 	console.log(Event);
 	return Event;
+}
+
+var dateNow = () => {
+    var date = new Date(); 
+	var now_utc =  new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(),
+	date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
+ 
+ 	return new Date(now_utc);
 }
